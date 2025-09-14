@@ -6,9 +6,7 @@ This project's core is powered by JavaScript, providing a seamless in-browser ex
 Features
 
     Browser-Based Gameplay: Run NES games directly in your web browser.
-
-    Real-time Chat: Connect and chat with other users while you play.
-
+    
     Save/Load States: Continue your games right where you left off.
 
     Achievement System: Unlock in-game achievements for a fun, extra challenge.
@@ -16,5 +14,9 @@ Features
     Cheat Injection: Load .cht files to inject cheats into your games.
 
     Full-screen Mode: Immerse yourself in the classic gaming experience.
+
+    
+    
+
 
 
