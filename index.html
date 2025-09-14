@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KXPReloaded</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c;
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #2d3748;
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            max-width: 90vw;
+            width: 500px;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        canvas {
+            border: 2px solid #4a5568;
+            background-color: #000;
+            image-rendering: pixelated;
+            width: 100%;
+            height: auto;
+            margin-top: 1.5rem;
+            display: none;
+            object-fit: contain; 
+        }
+        .nes-canvas {
+            aspect-ratio: 8 / 7;
+        }
+        .file-input-container {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .file-input-container input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+        }
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: auto;
+            max-width: 512px;
+            margin-top: 1.5rem;
+        }
+        .canvas-wrapper.fullscreen {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #000;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+        .canvas-wrapper.fullscreen canvas {
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            max-height: none;
+            object-fit: contain;
+        }
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+            text-align: left;
+        }
+        .achievement-item {
+            background-color: #4a5568;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            opacity: 0.5;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.3);
+        }
+        .achievement-item.unlocked {
+            opacity: 1;
+            box-shadow: 0 0 10px rgba(76, 209, 55, 0.5);
+        }
+        footer {
+            width: 100%;
+            text-align: center;
+            padding: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Warning Screen -->
+    <div id="warning-screen" class="container transition-all duration-500">
+        <h1 class="text-4xl font-extrabold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">Warning</h1>
+        <p class="text-lg text-red-500 font-bold mb-6">Piracy is no party! Please do not pirate games, it is a serious crime. You can go to jail for five years and get a fine.</p>
+        <div class="flex flex-col sm:flex-row justify-center gap-4">
+            <button id="accept-button" class="w-full sm:w-1/2 px-6 py-3 bg-green-500 text-white font-semibold rounded-lg shadow-lg hover:bg-green-600 transition duration-300">
+                Accept
+            </button>
+            <button id="reject-button" class="w-full sm:w-1/2 px-6 py-3 bg-red-500 text-white font-semibold rounded-lg shadow-lg hover:bg-red-600 transition duration-300">
+                Reject
+            </button>
+        </div>
+    </div>
+
+    <!-- Ban Screen -->
+    <div id="ban-screen" class="container hidden transition-all duration-500">
+        <h1 class="text-4xl font-extrabold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-red-600">Banned</h1>
+        <p class="text-lg text-red-500 font-bold mb-6">Banned Permanently - Reason: Piracy</p>
+        <p class="text-sm text-gray-400 mb-6">Note: Piracy is a serious crime.</p>
+        <button id="appeal-button" class="px-6 py-3 bg-blue-500 text-white font-semibold rounded-lg shadow-lg hover:bg-blue-600 transition duration-300">
+            Appeal
+        </button>
+        <div id="appeal-message" class="mt-4 p-4 bg-gray-700 rounded-lg hidden">
+            <p class="text-sm">Please email your appeal to: <span class="text-green-300">kittorouwu@gmail.com</span></p>
+        </div>
+    </div>
+
+    <!-- Home Screen -->
+    <div id="home-screen" class="container hidden transition-all duration-500">
+        <h1 class="text-4xl font-extrabold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">KXPReloaded</h1>
+        
+        <!-- Nintendo Section -->
+        <div class="space-y-4 mb-8">
+            <h2 class="text-2xl font-bold">Nintendo</h2>
+            <button id="nes-button" class="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:bg-indigo-700 transition duration-300">
+                Nintendo Entertainment System (NES)
+            </button>
+        </div>
+        
+        <!-- Achievements Section -->
+        <div class="mt-8 pt-4 border-t border-gray-600">
+            <h3 class="text-xl font-bold mb-4">Achievements</h3>
+            <div id="achievements-list" class="achievements-grid">
+                <div id="poyo-achievement" class="achievement-item">
+                    <p class="font-bold">Poyo!</p>
+                    <p class="text-xs text-gray-300">Played Kirby's Adventure</p>
+                </div>
+                <div id="sonic-achievement" class="achievement-item">
+                    <p class="font-bold">Gotta Go Fast</p>
+                    <p class="text-xs text-gray-300">Wait- Sonic on nes Excuse meh?</p>
+                </div>
+                <div id="mario-achievement" class="achievement-item">
+                    <p class="font-bold">YOOOOSHI!</p>
+                    <p class="text-xs text-gray-300">Played a Mario game</p>
+                </div>
+                <div id="zelda-achievement" class="achievement-item">
+                    <p class="font-bold">Hyrule Legend</p>
+                    <p class="text-xs text-gray-300">Played a Zelda game</p>
+                </div>
+                <div id="samus-achievement" class="achievement-item">
+                    <p class="font-bold">Welcome Samus</p>
+                    <p class="text-xs text-gray-300">Played Metroid</p>
+                </div>
+                <div id="tyson-achievement" class="achievement-item">
+                    <p class="font-bold">Wait- MIKE TYSON!?</p>
+                    <p class="text-xs text-gray-300">Play Mike Tysons Punch out</p>
+                </div>
+                <div id="golfing-achievement" class="achievement-item">
+                    <p class="font-bold">Golfing</p>
+                    <p class="text-xs text-gray-300">Play NES Open Tournament Golf or Golf</p>
+                </div>
+                <div id="dizzy-achievement" class="achievement-item">
+                    <p class="font-bold">I feel dizzy</p>
+                    <p class="text-xs text-gray-300">Play Excitebike</p>
+                </div>
+                <div id="duck-hunt-achievement" class="achievement-item">
+                    <p class="font-bold">Stupid Ducks...</p>
+                    <p class="text-xs text-gray-300">Play Duck Hunt</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Update Logs Section -->
+        <div class="mt-8 pt-4 border-t border-gray-600">
+            <h3 class="text-xl font-bold mb-4">Update Logs</h3>
+            <div class="text-left bg-gray-700 p-4 rounded-lg space-y-2">
+                <div class="bg-gray-800 p-3 rounded-md">
+                    <p class="text-sm font-semibold text-green-300 mb-1">Bug Fixes:</p>
+                    <p class="text-sm">Looks like dr robotniks plan to fill the nes emulator bugs has failed and the nes games are normal again!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NES Emulator Screen -->
+    <div id="nes-screen" class="container hidden transition-all duration-500">
+        <h1 class="text-4xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">NES Emulator</h1>
+        <p class="text-sm text-gray-400 mb-4">Select a .nes ROM file to begin.</p>
+        <p class="text-xs text-red-400 mb-4 font-semibold">Piracy is a serious crime, please dump your games!</p>
+        <div class="flex flex-col sm:flex-row justify-center gap-4 mb-4">
+            <div class="file-input-container">
+                <button class="px-6 py-3 bg-green-500 text-white font-semibold rounded-lg shadow-lg hover:bg-green-600 transition duration-300">
+                    Select ROM File
+                </button>
+                <input type="file" id="nes-rom-file-input" accept=".nes" />
+            </div>
+            <button id="nes-fullscreen-button" class="px-6 py-3 bg-blue-500 text-white font-semibold rounded-lg shadow-lg hover:bg-blue-600 transition duration-300">
+                Fullscreen
+            </button>
+        </div>
+        <div id="nes-canvas-wrapper" class="canvas-wrapper">
+            <canvas id="nes-game-canvas" class="nes-canvas"></canvas>
+        </div>
+        <div id="nes-message-box" class="mt-4 p-4 rounded-lg bg-red-800 text-red-200 hidden"></div>
+        <div id="nes-controls-info" class="mt-4 p-4 rounded-lg bg-gray-700 text-gray-300 text-sm hidden">
+            <h3 class="font-bold mb-2">Controls:</h3>
+            <p><strong>A:</strong> X | <strong>B:</strong> Z</p>
+            <p><strong>Start:</strong> Enter | <strong>Select:</strong> Shift</p>
+            <p><strong>D-Pad:</strong> Arrow Keys</p>
+        </div>
+        <button id="nes-home-button" class="mt-4 px-6 py-3 bg-gray-600 text-white font-semibold rounded-lg shadow-lg hover:bg-gray-700 transition duration-300">
+            Go to Home
+        </button>
+    </div>
+
+    <footer>
+        <p class="text-sm text-gray-500">Emulator By KitXP ^-^</p>
+    </footer>
+
+    <script src="https://unpkg.com/jsnes/dist/jsnes.min.js"></script>
+    <script>
+        window.onload = () => {
+            console.log("All scripts and assets have finished loading.");
+
+            const warningScreen = document.getElementById('warning-screen');
+            const banScreen = document.getElementById('ban-screen');
+            const homeScreen = document.getElementById('home-screen');
+            const nesScreen = document.getElementById('nes-screen');
+
+            const acceptButton = document.getElementById('accept-button');
+            const rejectButton = document.getElementById('reject-button');
+            const appealButton = document.getElementById('appeal-button');
+            const appealMessage = document.getElementById('appeal-message');
+
+            const nesButton = document.getElementById('nes-button');
+
+            const nesRomFileInput = document.getElementById('nes-rom-file-input');
+
+            const nesGameCanvas = document.getElementById('nes-game-canvas');
+
+            const nesMessageBox = document.getElementById('nes-message-box');
+
+            const nesControlsInfo = document.getElementById('nes-controls-info');
+
+            const nesFullscreenButton = document.getElementById('nes-fullscreen-button');
+
+            const nesCanvasWrapper = document.getElementById('nes-canvas-wrapper');
+            
+            const nesHomeButton = document.getElementById('nes-home-button');
+
+            const achievements = {
+                poyo: { id: 'poyo-achievement', keywords: ['kirby'], unlocked: false },
+                sonic: { id: 'sonic-achievement', keywords: ['sonic'], unlocked: false },
+                mario: { id: 'mario-achievement', keywords: ['mario', 'bros'], unlocked: false },
+                zelda: { id: 'zelda-achievement', keywords: ['zelda', 'hyrule'], unlocked: false },
+                samus: { id: 'samus-achievement', keywords: ['metroid'], unlocked: false },
+                tyson: { id: 'tyson-achievement', keywords: ['tyson', 'punch-out'], unlocked: false },
+                golfing: { id: 'golfing-achievement', keywords: ['golf'], unlocked: false },
+                dizzy: { id: 'dizzy-achievement', keywords: ['excitebike'], unlocked: false },
+                duckHunt: { id: 'duck-hunt-achievement', keywords: ['duck hunt'], unlocked: false },
+            };
+
+            // Set native resolution for the NES canvas
+            nesGameCanvas.width = 256;
+            nesGameCanvas.height = 240;
+
+            let nes = null;
+            let activeEmulator = null;
+            
+            // Variables for audio
+            let audioCtx = null;
+            let audioProcessor = null;
+            let audioBuffer = [];
+            const AUDIO_SAMPLE_RATE = 44100;
+            const BUFFER_SIZE = 4096;
+            let isAudioStarted = false;
+
+            // Handle ban logic on page load
+            if (localStorage.getItem('banned') === 'true') {
+                warningScreen.classList.add('hidden');
+                banScreen.classList.remove('hidden');
+            } else {
+                warningScreen.classList.remove('hidden');
+            }
+
+            // Load achievements from localStorage on startup
+            function loadAchievements() {
+                const storedAchievements = localStorage.getItem('achievements');
+                if (storedAchievements) {
+                    const parsed = JSON.parse(storedAchievements);
+                    for (const key in parsed) {
+                        if (achievements[key]) {
+                            achievements[key].unlocked = parsed[key];
+                            if (parsed[key]) {
+                                document.getElementById(achievements[key].id).classList.add('unlocked');
+                            }
+                        }
+                    }
+                }
+            }
+            loadAchievements();
+
+            // Check and unlock achievements
+            function unlockAchievement(gameName) {
+                const lowerName = gameName.toLowerCase();
+                for (const key in achievements) {
+                    if (!achievements[key].unlocked) {
+                        const keywords = achievements[key].keywords;
+                        if (keywords.some(keyword => lowerName.includes(keyword))) {
+                            achievements[key].unlocked = true;
+                            localStorage.setItem('achievements', JSON.stringify({
+                                ...JSON.parse(localStorage.getItem('achievements') || '{}'),
+                                [key]: true
+                            }));
+                            document.getElementById(achievements[key].id).classList.add('unlocked');
+                            console.log(`Achievement Unlocked: ${achievements[key].id}!`);
+                        }
+                    }
+                }
+            }
+
+            // Utility function to show a message box
+            function showMessage(messageBox, message, isError = true) {
+                messageBox.textContent = message;
+                messageBox.className = `mt-4 p-4 rounded-lg font-semibold ${isError ? 'bg-red-800 text-red-200' : 'bg-green-800 text-green-200'}`;
+                messageBox.style.display = 'block';
+            }
+
+            // NES rendering function
+            function renderNES(frameBuffer) {
+                if (!nes || !nes.ppu || !frameBuffer) return;
+                const ctx = nesGameCanvas.getContext('2d');
+                const imageData = ctx.createImageData(256, 240);
+                for (let i = 0; i < frameBuffer.length; i++) {
+                    imageData.data[i * 4] = frameBuffer[i] & 0xFF; // R
+                    imageData.data[i * 4 + 1] = (frameBuffer[i] >> 8) & 0xFF; // G
+                    imageData.data[i * 4 + 2] = (frameBuffer[i] >> 16) & 0xFF; // B
+                    imageData.data[i * 4 + 3] = 255; // Alpha
+                }
+                ctx.putImageData(imageData, 0, 0);
+            }
+            
+            // NES audio processing function
+            function processNESAudio(buffer) {
+                audioBuffer.push(...buffer);
+            }
+            
+            // Function to initialize and start the audio context
+            function startAudio() {
+                if (isAudioStarted) return;
+                isAudioStarted = true;
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: AUDIO_SAMPLE_RATE });
+                audioProcessor = audioCtx.createScriptProcessor(BUFFER_SIZE, 0, 2);
+                
+                audioProcessor.onaudioprocess = function(e) {
+                    const output = e.outputBuffer;
+                    const left = output.getChannelData(0);
+                    const right = output.getChannelData(1);
+
+                    const count = Math.min(left.length, audioBuffer.length / 2);
+                    if (count < left.length) {
+                        left.fill(0, count);
+                        right.fill(0, count);
+                    }
+                    
+                    for (let i = 0; i < count; i++) {
+                        left[i] = audioBuffer[i * 2];
+                        right[i] = audioBuffer[i * 2 + 1];
+                    }
+                    audioBuffer.splice(0, count * 2);
+                };
+                audioProcessor.connect(audioCtx.destination);
+            }
+
+            // Main game loop for NES
+            function run() {
+                if (activeEmulator === 'nes' && nes) {
+                    nes.frame();
+                }
+                requestAnimationFrame(run);
+            }
+            run();
+
+            // Initialize the NES emulator
+            function initNES(romData, fileName) {
+                console.log("Attempting to initialize NES emulator.");
+                try {
+                    if (audioCtx) {
+                        audioCtx.close();
+                        isAudioStarted = false;
+                    }
+                    audioBuffer = [];
+                    nes = new jsnes.NES({
+                        onFrame: renderNES,
+                        onStatus: (message) => console.log('NES Status:', message),
+                        onAudio: processNESAudio,
+                        sampleRate: AUDIO_SAMPLE_RATE
+                    });
+                    nes.loadROM(romData);
+                    activeEmulator = 'nes';
+                    
+                    nesGameCanvas.style.display = 'block';
+                    nesControlsInfo.style.display = 'block';
+                    nesMessageBox.style.display = 'none';
+                    showMessage(nesMessageBox, "ROM loaded! Use the keyboard controls to play.", false);
+                    console.log("NES emulator ready.");
+                    unlockAchievement(fileName);
+
+                } catch (e) {
+                    showMessage(nesMessageBox, "Error loading ROM. " + e.message);
+                    console.error("NES emulator initialization error:", e);
+                }
+            }
+            
+            // Handle file selection and loading for NES
+            nesRomFileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                if (!file.name.toLowerCase().endsWith('.nes')) {
+                    showMessage(nesMessageBox, "Oops! This is not a .nes File.");
+                    return;
+                }
+                startAudio();
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    initNES(e.target.result, file.name);
+                };
+                reader.onerror = () => {
+                    showMessage(nesMessageBox, "Failed to read the file.");
+                };
+                reader.readAsBinaryString(file);
+            });
+            
+            // Keyboard input for the emulator
+            document.addEventListener('keydown', (e) => {
+                if (activeEmulator === 'nes' && nes) {
+                    const buttonMap = {
+                        'z': jsnes.Controller.BUTTON_A, 'x': jsnes.Controller.BUTTON_B, 'Shift': jsnes.Controller.BUTTON_SELECT, 'Enter': jsnes.Controller.BUTTON_START,
+                        'ArrowUp': jsnes.Controller.BUTTON_UP, 'ArrowDown': jsnes.Controller.BUTTON_DOWN, 'ArrowLeft': jsnes.Controller.BUTTON_LEFT, 'ArrowRight': jsnes.Controller.BUTTON_RIGHT
+                    };
+                    const button = buttonMap[e.key];
+                    if (button !== undefined) { nes.buttonDown(1, button); e.preventDefault(); }
+                }
+            });
+
+            document.addEventListener('keyup', (e) => {
+                if (activeEmulator === 'nes' && nes) {
+                    const buttonMap = {
+                        'z': jsnes.Controller.BUTTON_A, 'x': jsnes.Controller.BUTTON_B, 'Shift': jsnes.Controller.BUTTON_SELECT, 'Enter': jsnes.Controller.BUTTON_START,
+                        'ArrowUp': jsnes.Controller.BUTTON_UP, 'ArrowDown': jsnes.Controller.BUTTON_DOWN, 'ArrowLeft': jsnes.Controller.BUTTON_LEFT, 'ArrowRight': jsnes.Controller.BUTTON_RIGHT
+                    };
+                    const button = buttonMap[e.key];
+                    if (button !== undefined) { nes.buttonUp(1, button); e.preventDefault(); }
+                }
+            });
+
+            // Fullscreen handling
+            function handleFullscreen(wrapper) {
+                if (wrapper.requestFullscreen) { wrapper.requestFullscreen(); } else if (wrapper.mozRequestFullScreen) { wrapper.mozRequestFullScreen(); } else if (wrapper.webkitRequestFullscreen) { wrapper.webkitRequestFullscreen(); } else if (wrapper.msRequestFullscreen) { wrapper.msRequestFullscreen(); }
+            }
+            nesFullscreenButton.addEventListener('click', () => handleFullscreen(nesCanvasWrapper));
+
+            document.addEventListener('fullscreenchange', () => {
+                const wrapper = document.fullscreenElement === nesCanvasWrapper ? nesCanvasWrapper : null;
+                if (document.fullscreenElement) { wrapper.classList.add('fullscreen'); } else { wrapper.classList.remove('fullscreen'); }
+            });
+
+            // Button Event Listeners
+            acceptButton.addEventListener('click', () => {
+                warningScreen.classList.add('hidden');
+                homeScreen.classList.remove('hidden');
+            });
+            rejectButton.addEventListener('click', () => {
+                localStorage.setItem('banned', 'true');
+                warningScreen.classList.add('hidden');
+                banScreen.classList.remove('hidden');
+            });
+            appealButton.addEventListener('click', () => { appealMessage.classList.remove('hidden'); });
+            nesButton.addEventListener('click', () => {
+                homeScreen.classList.add('hidden');
+                nesScreen.classList.remove('hidden');
+            });
+
+            // "Go to Home" button logic
+            nesHomeButton.addEventListener('click', () => {
+                nesScreen.classList.add('hidden');
+                nesGameCanvas.style.display = 'none';
+                nesControlsInfo.style.display = 'none';
+                activeEmulator = null;
+                if (nes) {
+                    nes.stop();
+                    nes = null;
+                }
+                homeScreen.classList.remove('hidden');
+            });
+        };
+    </script>
+</body>
+</html>
+
